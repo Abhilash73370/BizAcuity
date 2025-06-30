@@ -1,0 +1,21 @@
+.frame-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.frame-btn {
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 400;
+  transition: border 0.2s, font-weight 0.2s;
+}
+
+.frame-btn.selected {
+  border: 2px solid #1976d2;
+  font-weight: 600;
+}
