@@ -1,34 +1,57 @@
+/* Modern Template & Theme */
+:root {
+  --modern-primary: #6366f1;
+  --modern-secondary: #7c3aed;
+  --modern-accent: #818cf8;
+  --modern-bg: #f3f4f6;
+  --modern-surface: #fff;
+  --modern-text: #312e81;
+  --modern-radius: 1rem;
+  --modern-shadow: 0 4px 24px rgba(99,102,241,0.10);
+}
+
 body {
-  background: #f6f8fa;
-  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  background: var(--modern-bg);
+  color: var(--modern-text);
+  font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
 
-/* .main-container {
-  max-width: 950px;
-  margin: 0 auto;
-  padding: 2em 1em 1em 1em;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.08);
-} */
+.main-container {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem 1.5rem;
+  background: var(--modern-surface);
+  border-radius: var(--modern-radius);
+  box-shadow: var(--modern-shadow);
+}
 
 .header {
   text-align: center;
-  margin-bottom: 2em;
+  margin-bottom: 2.5rem;
+  padding: 2rem 0 1.5rem 0;
+  background: linear-gradient(135deg, var(--modern-primary), var(--modern-secondary));
+  border-radius: var(--modern-radius);
+  color: white;
+  box-shadow: var(--modern-shadow);
 }
 
 .header h1 {
-  font-size: 2.5em;
-  color: #1976d2;
-  margin-bottom: 0.2em;
+  font-size: 2.7em;
+  font-weight: 800;
+  margin-bottom: 0.3em;
   letter-spacing: 1px;
+  background: linear-gradient(135deg, #fff, var(--modern-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .header p {
-  color: #555;
-  font-size: 1.1em;
+  color: rgba(255,255,255,0.92);
+  font-size: 1.15em;
+  font-weight: 500;
 }
 
 .controls {
@@ -46,33 +69,23 @@ body {
 }
 
 .label-header {
-  font-weight: 600;
-  color: #1976d2;
-  margin-bottom: 0.5em;
+  color: var(--modern-primary);
+  font-weight: 700;
   font-size: 1.1em;
 }
 
-.file-input {
-  padding: 0.5em;
-  border-radius: 6px;
-  border: 1px solid #bdbdbd;
-  background: #f3f6fa;
+.file-input, .color-input {
+  background: var(--modern-bg);
+  border-radius: 0.5rem;
+  border: 1.5px solid var(--modern-accent);
   font-size: 1em;
   margin-bottom: 0.5em;
-}
-
-.color-input {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: #f3f6fa;
-  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(99,102,241,0.07);
 }
 
 .or-divider {
+  color: var(--modern-accent);
   font-weight: bold;
-  color: #888;
   font-size: 1.2em;
   margin: 0 1em;
 }

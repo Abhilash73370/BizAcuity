@@ -1,4 +1,3 @@
-import '../Styles/Wall.css'
 import { Rnd } from 'react-rnd'
 
 function DraggableImage({
@@ -26,37 +25,41 @@ function DraggableImage({
 let frameStyle = {}
 if (imageState.frame === 'gold') {
   frameStyle = {
-    border: '10px solid transparent',
-    borderImage: 'url("http://gallery.yopriceville.com:8001/var/albums/Holidays-Frames/Beautiful_Gold_Christmas_PNG_Photo_Frame.png?m=1629822456") 60 stretch',
+    border: '8px solid #FFD700',
     borderRadius: borderRadius,
-    
+    boxSizing: 'border-box',
+    boxShadow: '0 0 10px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.3)',
   };
 } else if (imageState.frame === 'wood') {
   frameStyle = {
-    border: '10px solid transparent',
-    borderImage: 'url("/wood.jpg") 30% stretch',
-    borderImageSlice: '30%',
-    borderImageWidth: '10px',
-    borderImageRepeat: 'stretch',
-    
+    border: '8px solid #8B4513',
+    borderRadius: borderRadius,
+    boxSizing: 'border-box',
+    background: 'linear-gradient(45deg, #8B4513, #A0522D, #8B4513)',
+    boxShadow: '0 0 8px rgba(139, 69, 19, 0.4)',
   };
 } else if (imageState.frame === 'metal') {
   frameStyle = {
-    border: '10px solid transparent',
-    borderImage: 'url("/metal.jpg") 30% stretch',
-    borderImageSlice: '30%',
-    borderImageWidth: '10px',
-    borderImageRepeat: 'stretch',
-
+    border: '8px solid #C0C0C0',
+    borderRadius: borderRadius,
+    boxSizing: 'border-box',
+    background: 'linear-gradient(45deg, #C0C0C0, #E5E5E5, #C0C0C0)',
+    boxShadow: '0 0 8px rgba(192, 192, 192, 0.4)',
   }
 }
   let styleOverrides = {} 
 
-  // Special handling for circle shape with frame
-  const isCircle = imageState.shape === 'circle' && (imageState.frame === 'wood' || imageState.frame === 'metal')
-  const wrapperStyle = isCircle
-   
-   
+  // Apply frame to all shapes
+  const hasFrame = imageState.frame && imageState.frame !== 'none'
+  const wrapperStyle = hasFrame ? {
+    width: '100%',
+    height: '100%',
+    borderRadius: borderRadius,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+    position: 'relative',
+    ...frameStyle
+  } : {}
 
   return (
     <Rnd
@@ -72,14 +75,47 @@ if (imageState.frame === 'gold') {
       maxHeight={wallHeight}
       enableResizing={{
         bottomRight: true,
-        bottom: true,
-        right: true,
-        top: true,
-        left: true,
-        topLeft: true,
-        topRight: true,
-        bottomLeft: true,
+        bottom: false,
+        right: false,
+        top: false,
+        left: false,
+        topLeft: false,
+        topRight: false,
+        bottomLeft: false,
       }}
+      resizeHandleComponent={
+        isSelected
+          ? {
+              bottomRight: (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '-8px',
+                    right: '-8px',
+                    width: '16px',
+                    height: '16px',
+                    background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+                    border: '2px solid white',
+                    borderRadius: '50%',
+                    cursor: 'nw-resize',
+                    zIndex: 20,
+                    pointerEvents: 'auto',
+                    boxShadow: 'var(--shadow-md)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.2)';
+                    e.target.style.boxShadow = 'var(--shadow-lg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.boxShadow = 'var(--shadow-md)';
+                  }}
+                />
+              ),
+            }
+          : undefined
+      }
       onDragStart={() => setSelectedIdx(idx)}
       onDragStop={(e, d) => {
         setImageStates(states =>
@@ -107,17 +143,17 @@ if (imageState.frame === 'gold') {
         )
       }}
       style={{
-        border: isSelected && !isCircle ? '3px solid #1976d2' : !isCircle ? '2px solid #333' : undefined,
-        background: '#fff',
+        border: isSelected ? '2px dotted #1976d2' : 'none',
+        background: 'transparent',
         zIndex: isSelected ? 10 : 1,
-        borderRadius: !isCircle ? borderRadius : undefined,
+        borderRadius: borderRadius,
         overflow: 'visible',
-        ...(!isCircle ? frameStyle : {}),
+        cursor: 'move',
         ...styleOverrides,
       }}
       onClick={() => setSelectedIdx(idx)}
     >
-      {isCircle ? (
+      {hasFrame ? (
         <div style={wrapperStyle}>
           <img
             src={src}
@@ -126,8 +162,8 @@ if (imageState.frame === 'gold') {
               width: '100%',
               height: '100%',
               pointerEvents: 'none',
-              objectFit: '100% 100%',
-              borderRadius: '50%',
+              // objectFit: 'cover',
+              borderRadius: borderRadius,
             }}
             draggable={false}
           />
@@ -140,7 +176,7 @@ if (imageState.frame === 'gold') {
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
-            objectFit: '100% 100%',
+            objectFit: 'cover',
             borderRadius,
           }}
           draggable={false}

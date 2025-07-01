@@ -1,6 +1,6 @@
 
 
-function ShapeSelector({ shape, onChange, style }) {
+function ShapeSelector({ shape, onChange }) {
   const shapes = [
     { key: 'square', label: 'Square' },
     { key: 'circle', label: 'Circle' },
@@ -9,32 +9,12 @@ function ShapeSelector({ shape, onChange, style }) {
   ]
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: -38,
-        left: 0,
-        display: 'flex',
-        gap: 8,
-        zIndex: 20,
-        ...style,
-      }}
-    >
+    <div className="shape-buttons">
       {shapes.map(s => (
         <button
           key={s.key}
-          style={{
-            padding: '2px 8px',
-            borderRadius: 4,
-            border: shape === s.key ? '2px solid #1976d2' : '1px solid #bbb',
-            background: '#fff',
-            cursor: 'pointer',
-            fontWeight: shape === s.key ? 600 : 400,
-          }}
-          onClick={e => {
-            e.stopPropagation()
-            onChange(s.key)
-          }}
+          className={`shape-btn ${shape === s.key ? 'active' : ''}`}
+          onClick={() => onChange(s.key)}
         >
           {s.label}
         </button>

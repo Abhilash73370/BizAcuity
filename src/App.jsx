@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Wall from './components/Wall'
-import './Styles/App.css'
+import './Styles/modern.css'
+import './Styles/modern-components.css'
 
 function App() {
   const [wallImage, setWallImage] = useState(null)
@@ -46,95 +47,102 @@ function App() {
   }
 
   return (
-    <div className="main-container">
+    <div className="app-grid">
       <header className="header">
         <h1>Picture Wall Designer</h1>
         <p>Create your own wall with custom background and draggable images!</p>
       </header>
-      <section className="controls">
-        <div className="control-group">
-          <label className="label-header">Wall Width (px)</label>
-          <input
-            type="number"
-            min={MIN_SIZE}
-            max={MAX_SIZE}
-            value={inputWidth}
-            onChange={e => setInputWidth(e.target.value)}
-            className="file-input"
-            style={{ width: 100 }}
-          />
+      <aside className="sidebar">
+        <div className="card">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="control-group">
+                <label className="label-header">Wall Width (px)</label>
+                <input
+                  type="number"
+                  min={MIN_SIZE}
+                  max={MAX_SIZE}
+                  value={inputWidth}
+                  onChange={e => setInputWidth(e.target.value)}
+                  className="file-input"
+                  style={{ width: 70 }}
+                />
+              </div>
+              <div className="control-group">
+                <label className="label-header">Wall Height (px)</label>
+                <input
+                  type="number"
+                  min={MIN_SIZE}
+                  max={MAX_SIZE}
+                  value={inputHeight}
+                  onChange={e => setInputHeight(e.target.value)}
+                  className="file-input"
+                  style={{ width: 70 }}
+                />
+              </div>
+              <button
+                className="set-wall-btn"
+                onClick={handleSetWallSize}
+                style={{ marginBottom: 0, minWidth: 90, fontSize: '0.95rem', padding: '0.4rem 0.8rem' }}
+              >
+                Set Wall Size
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="control-group">
-          <label className="label-header">Wall Height (px)</label>
-          <input
-            type="number"
-            min={MIN_SIZE}
-            max={MAX_SIZE}
-            value={inputHeight}
-            onChange={e => setInputHeight(e.target.value)}
-            className="file-input"
-            style={{ width: 100 }}
-          />
+        <div className="card">
+          <div className="control-group">
+            <label className="label-header">Upload Images to Wall</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="file-upload-input"
+              style={{ maxWidth: 180 }}
+              onChange={handleImageChange}
+            />
+          </div>
         </div>
-        <button
-          className="set-wall-btn"
-          style={{
-            marginLeft: '1em',
-            padding: '0.5em 1.5em',
-            background: '#1976d2',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '1em',
-          }}
-          onClick={handleSetWallSize}
-        >
-          Set Wall Size
-        </button>
-      </section>
-      <section className="controls">
-        <div className="control-group">
-          <label className="label-header">Background Image</label>
-          <input
-            type="file"
-            accept="image/*"
-            id="bg-upload"
-            className="file-input"
-            onChange={handleWallImageChange}
-          />
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div className="control-group">
+              <label className="label-header">Background Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                id="bg-upload"
+                className="file-upload-input"
+                style={{ maxWidth: 180 }}
+                onChange={handleWallImageChange}
+              />
+            </div>
+            <div className="or-divider">OR</div>
+            <div className="control-group">
+              <label className="label-header">Background Color</label>
+              <input
+                type="color"
+                value={wallColor}
+                className="color-input"
+                style={{ width: 40, height: 40, padding: 0 }}
+                onChange={handleColorChange}
+              />
+            </div>
+          </div>
         </div>
-        <div className="or-divider">OR</div>
-        <div className="control-group">
-          <label className="label-header">Background Color</label>
-          <input
-            type="color"
-            value={wallColor}
-            className="color-input"
-            onChange={handleColorChange}
-          />
-        </div>
-      </section>
-      <section className="controls">
-        <div className="control-group">
-          <label className="label-header">Upload Images to Wall</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            className="file-input"
-            onChange={handleImageChange}
-          />
-        </div>
-      </section>
-      <Wall
-        wallImage={wallImage}
-        images={images}
-        setImages={setImages}
-        wallColor={wallColor}
-        wallWidth={wallWidth}
-        wallHeight={wallHeight}
-      />
+      </aside>
+      <main className="main-wall">
+        <Wall
+          wallImage={wallImage}
+          images={images}
+          setImages={setImages}
+          wallColor={wallColor}
+          wallWidth={wallWidth}
+          wallHeight={wallHeight}
+        />
+      </main>
+      <footer className="footer">
+        &copy; {new Date().getFullYear()} Picture Wall Designer
+      </footer>
     </div>
   )
 }
