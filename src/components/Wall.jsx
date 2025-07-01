@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import DraggableImage from './DraggableImage'
 import ImagePropertiesPanel from './ImagePropertiesPanel'
-import '../Styles/Wall.css'
+import '../Styles/modern-wall.css'
 
 function Wall({ wallImage, setImages, images, wallColor, wallWidth, wallHeight }) {
   const [imageStates, setImageStates] = useState([])
@@ -64,39 +64,51 @@ function Wall({ wallImage, setImages, images, wallColor, wallWidth, wallHeight }
   }
 
   return (
-    <div className="wall-root">
-      <div
-        className="wall-background"
-        style={{
-          backgroundColor: wallColor,
-          width: wallWidth,
-          height: wallHeight,
-          backgroundImage: wallImage ? `url(${wallImage})` : undefined,
-        }}
-      >
-        {images.map((src, idx) => (
-          <DraggableImage
-            key={idx}
-            src={src}
-            idx={idx}
-            imageState={imageStates[idx]}
-            setImageStates={setImageStates}
-            wallWidth={wallWidth}
-            wallHeight={wallHeight}
-            isSelected={selectedIdx === idx}
-            setSelectedIdx={setSelectedIdx}
-          />
-        ))}
+    <div className="wall-container">
+      <div className="wall-root">
+        <div
+          className="wall-background"
+          style={{
+            backgroundColor: wallColor,
+            width: wallWidth,
+            height: wallHeight,
+            backgroundImage: wallImage ? `url(${wallImage})` : undefined,
+          }}
+          onClick={(e) => {
+            // Only unselect if clicking directly on the wall background, not on an image
+            if (e.target === e.currentTarget) {
+              setSelectedIdx(null)
+            }
+          }}
+        >
+          {images.map((src, idx) => (
+            <DraggableImage
+              key={idx}
+              src={src}
+              idx={idx}
+              imageState={imageStates[idx]}
+              setImageStates={setImageStates}
+              wallWidth={wallWidth}
+              wallHeight={wallHeight}
+              isSelected={selectedIdx === idx}
+              setSelectedIdx={setSelectedIdx}
+            />
+          ))}
+        </div>
       </div>
-      {/* Properties panel on the right */}
-      {selectedIdx !== null && imageStates[selectedIdx] && (
-        <ImagePropertiesPanel
-          imageState={imageStates[selectedIdx]}
-          onShapeChange={handleShapeChange}
-          onFrameChange={handleFrameChange}
-          onDelete={handleDelete}
-        />
-      )}
+      {/* Always render the properties panel container to prevent layout shift */}
+      <div style={{width: 320, minWidth: 280, maxWidth: 400}}>
+        {selectedIdx !== null && imageStates[selectedIdx] ? (
+          <ImagePropertiesPanel
+            imageState={imageStates[selectedIdx]}
+            onShapeChange={handleShapeChange}
+            onFrameChange={handleFrameChange}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <div className="properties-panel" style={{visibility: 'hidden'}} />
+        )}
+      </div>
     </div>
   )
 }
