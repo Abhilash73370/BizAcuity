@@ -10,24 +10,18 @@ const Login = () => {
   const navigate = useNavigate();
   const { registeredUser, setRegisteredUser } = useContext(UserContext);
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    setError('');
-    try {
-      const res = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || 'Login failed.');
-        return;
-      }
-      setRegisteredUser({ ...data.user, isLoggedIn: true, token: data.token });
+    if (
+      registeredUser &&
+      email === registeredUser.email &&
+      password === registeredUser.password
+    ) {
+      setError('');
+      setRegisteredUser({ ...registeredUser, isLoggedIn: true });
       navigate('/wall');
-    } catch (err) {
-      setError('Network error.');
+    } else {
+      setError('Invalid email or password, or user not registered.');
     }
   };
 
