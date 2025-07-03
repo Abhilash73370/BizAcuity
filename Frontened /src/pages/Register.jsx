@@ -9,27 +9,11 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const { setRegisteredUser } = useContext(UserContext);
-  const [error, setError] = useState('');
 
-  const handleRegister = async (e) => {
+  const handleRegister = (e) => {
     e.preventDefault();
-    setError('');
-    try {
-      const res = await fetch('http://localhost:5000/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.message || 'Registration failed.');
-        return;
-      }
-      setRegisteredUser({ name, email, password });
-      navigate('/login');
-    } catch (err) {
-      setError('Network error.');
-    }
+    setRegisteredUser({ name, email, password });
+    navigate('/login');
   };
 
   return (
@@ -75,7 +59,6 @@ const Register = () => {
           <div className="mt-4 text-base text-primary-dark text-center">
             <a href="/login" className="text-primary-dark underline hover:text-primary">Already a user? Then Login directly</a>
           </div>
-          {error && <div className="text-red-600 mt-2">{error}</div>}
         </form>
       </div>
     </>
