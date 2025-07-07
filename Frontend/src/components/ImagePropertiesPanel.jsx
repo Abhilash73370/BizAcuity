@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import ShapeSelector from './ShapeSelector'
 import FrameSelector from './FrameSelector'
-import { Square, Circle, Image, Trash2 } from 'lucide-react'
+import { Square, Circle, Image } from 'lucide-react'
 
-function ImagePropertiesPanel({ imageState, onShapeChange, onFrameChange, onDelete }) {
-  const [showShapes, setShowShapes] = useState(false)
-  if (!imageState) return null
+function ImagePropertiesPanel({ imageState, onShapeChange, onFrameChange }) {
+  if (!imageState) return null;
 
   return (
     <div className="bg-surface rounded-xl shadow-xl border border-border p-6 w-full">
@@ -33,7 +32,6 @@ function ImagePropertiesPanel({ imageState, onShapeChange, onFrameChange, onDele
           onChange={onFrameChange}
         />
       </div>
-     
     </div>
   )
 }
