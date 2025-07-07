@@ -96,8 +96,11 @@ const Landing = () => {
           </h1>
           <button
             onClick={handleNewDesign}
-            className="bg-[#967e76] hover:bg-[#7c6a65] text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+            className="bg-primary text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary-dark transition flex items-center gap-2"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
             Start New Design
           </button>
         </div>
@@ -114,7 +117,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {loading ? (
               <div className="col-span-full text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#967e76] mx-auto"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
               </div>
             ) : error ? (
               <div className="col-span-full text-center py-8 text-red-600">
@@ -131,8 +134,11 @@ const Landing = () => {
                 <p className="text-gray-600 mb-4">Start creating your first wall design!</p>
                 <button
                   onClick={handleNewDesign}
-                  className="bg-[#967e76] hover:bg-[#7c6a65] text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+                  className="bg-primary text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary-dark transition flex items-center gap-2 mx-auto"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
                   Create New Design
                 </button>
               </div>
@@ -161,7 +167,7 @@ const Landing = () => {
                     </p>
                     <button
                       onClick={() => handleOpenDraft(draft._id)}
-                      className="w-full bg-[#b7c4cf] hover:bg-[#9ba7b1] text-gray-800 font-semibold py-2 px-4 rounded transition duration-300"
+                      className="w-full bg-primary text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary-dark transition"
                     >
                       Open Design
                     </button>
@@ -189,13 +195,13 @@ const Landing = () => {
                   setShowDeleteModal(false);
                   setDraftToDelete(null);
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition duration-300"
+                className="px-4 py-2 rounded-lg font-semibold text-primary-dark hover:bg-gray-100 transition duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md transition duration-200"
               >
                 Delete
               </button>

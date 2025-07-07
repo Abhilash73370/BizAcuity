@@ -33,6 +33,12 @@ const decorCategories = {
         name: 'White Table',
         src: '/decors/White.png',
         size: { width: 200, height: 150 }
+      },
+      {
+        id: 'table-4',
+        name: 'Table 4',
+        src: '/decors/table4.png',
+        size: { width: 350, height: 200 }
       }
     ]
   },

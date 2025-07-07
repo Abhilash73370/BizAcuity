@@ -8,7 +8,6 @@ const crypto = require('crypto');
 
 // Import models
 const User = require('./models/User');
-const WallDesign = require('./models/WallDesign');
 const Draft = require('./models/Draft');
 
 const app = express();
@@ -133,8 +132,7 @@ app.post('/login', async (req, res) => {
 app.get('/user/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('-password') // Exclude password from the response
-      .populate('wallDesigns');
+      .select('-password'); // Exclude password from the response
       
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -143,99 +141,11 @@ app.get('/user/:id', async (req, res) => {
     res.json({
       id: user._id,
       name: user.name,
-      email: user.email,
-      wallDesigns: user.wallDesigns
+      email: user.email
     });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
-// Create wall design
-app.post('/wall-designs', async (req, res) => {
-  try {
-    const { userId, name, wallSize, backgroundColor, images } = req.body;
-    
-    const wallDesign = new WallDesign({
-      userId,
-      name,
-      wallSize,
-      backgroundColor,
-      images
-    });
-    
-    await wallDesign.save();
-
-    // Add the design to user's wallDesigns array
-    await User.findByIdAndUpdate(userId, {
-      $push: { wallDesigns: wallDesign._id }
-    });
-
-    res.status(201).json({
-      message: 'Wall design created successfully',
-      wallDesign
-    });
-  } catch (error) {
-    console.error('Create wall design error:', error);
-    res.status(500).json({ error: 'Failed to create wall design' });
-  }
-});
-
-// Get user's wall designs
-app.get('/wall-designs/:userId', async (req, res) => {
-  try {
-    const wallDesigns = await WallDesign.find({ userId: req.params.userId })
-      .sort({ lastModified: -1 });
-    res.json(wallDesigns);
-  } catch (error) {
-    console.error('Get wall designs error:', error);
-    res.status(500).json({ error: 'Failed to fetch wall designs' });
-  }
-});
-
-// Update wall design
-app.put('/wall-designs/:id', async (req, res) => {
-  try {
-    const wallDesign = await WallDesign.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
-    
-    if (!wallDesign) {
-      return res.status(404).json({ error: 'Wall design not found' });
-    }
-    
-    res.json({
-      message: 'Wall design updated successfully',
-      wallDesign
-    });
-  } catch (error) {
-    console.error('Update wall design error:', error);
-    res.status(500).json({ error: 'Failed to update wall design' });
-  }
-});
-
-// Delete wall design
-app.delete('/wall-designs/:id', async (req, res) => {
-  try {
-    const wallDesign = await WallDesign.findById(req.params.id);
-    if (!wallDesign) {
-      return res.status(404).json({ error: 'Wall design not found' });
-    }
-
-    // Remove the design from user's wallDesigns array
-    await User.findByIdAndUpdate(wallDesign.userId, {
-      $pull: { wallDesigns: wallDesign._id }
-    });
-
-    await WallDesign.findByIdAndDelete(req.params.id);
-    
-    res.json({ message: 'Wall design deleted successfully' });
-  } catch (error) {
-    console.error('Delete wall design error:', error);
-    res.status(500).json({ error: 'Failed to delete wall design' });
   }
 });
 

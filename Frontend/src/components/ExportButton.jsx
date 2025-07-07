@@ -9,41 +9,54 @@ const ExportButton = ({ wallRef }) => {
 
   const handleExport = async (format) => {
     if (!wallRef.current || exporting) return;
-    
+
     setExporting(true);
     try {
-      const canvas = await html2canvas(wallRef.current, {
+      // Capture the wall as a canvas
+      const wallCanvas = await html2canvas(wallRef.current, {
         useCORS: true,
         allowTaint: true,
-        backgroundColor: null,
-        scale: 2, // Higher quality
+        backgroundColor: '#fff',
+        scale: 2,
       });
+
+      // Add padding around the wall
+      const padding = 40;
+      const paddedCanvas = document.createElement('canvas');
+      paddedCanvas.width = wallCanvas.width + padding * 2;
+      paddedCanvas.height = wallCanvas.height + padding * 2;
+      const ctx = paddedCanvas.getContext('2d');
+
+      // Fill background with white
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+
+      // Draw the wall canvas onto the padded canvas
+      ctx.drawImage(wallCanvas, padding, padding);
 
       switch (format) {
         case 'png':
-          const pngUrl = canvas.toDataURL('image/png');
-          downloadImage(pngUrl, 'wall-design.png');
+          downloadImage(paddedCanvas.toDataURL('image/png'), 'wall-design.png');
           break;
-        
+
         case 'jpeg':
-          const jpegUrl = canvas.toDataURL('image/jpeg', 0.9);
-          downloadImage(jpegUrl, 'wall-design.jpg');
+          downloadImage(paddedCanvas.toDataURL('image/jpeg', 0.9), 'wall-design.jpg');
           break;
-        
+
         case 'pdf':
           const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'px',
-            format: [canvas.width, canvas.height]
+            format: [paddedCanvas.width, paddedCanvas.height]
           });
-          
+
           pdf.addImage(
-            canvas.toDataURL('image/png'),
+            paddedCanvas.toDataURL('image/png'),
             'PNG',
             0,
             0,
-            canvas.width,
-            canvas.height
+            paddedCanvas.width,
+            paddedCanvas.height
           );
           pdf.save('wall-design.pdf');
           break;
@@ -111,4 +124,4 @@ const ExportButton = ({ wallRef }) => {
   );
 };
 
-export default ExportButton; 
+export default ExportButton;
