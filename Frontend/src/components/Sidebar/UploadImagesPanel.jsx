@@ -30,12 +30,12 @@ const UploadImagesPanel = ({ imagesInputRef, handleImageChange, images, handleRe
         <div className="grid grid-cols-3 gap-2 mt-3">
           {images.map((src, idx) => (
             <div key={idx} className="relative group rounded-lg overflow-hidden border border-primary shadow-sm">
-              <img src={src} alt="preview" className="w-full h-20 object-cover" />
+              <img src={src} alt={`preview ${idx + 1}`} className="w-full h-20 object-cover" />
               <button
                 type="button"
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition"
                 onClick={() => handleRemoveImage(idx)}
-                aria-label="Remove image"
+                aria-label={`Remove image ${idx + 1}`}
               >
                 <X className="w-4 h-4" />
               </button>
