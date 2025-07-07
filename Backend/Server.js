@@ -400,7 +400,7 @@ app.put('/user/update-password/:id', async (req, res) => {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    // Update password directly
+    // Update password
     user.password = newPassword;
     await user.save();
 
