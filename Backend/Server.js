@@ -5,33 +5,37 @@ const mongoose = require('mongoose');
 const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
+const fs = require('fs');
 
 // Import models
 const User = require('./models/User');
-const WallDesign = require('./models/WallDesign');
 const Draft = require('./models/Draft');
 
 const app = express();
 const PORT = 5001;
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename using timestamp and random string
-    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: {
     fileSize: 30 * 1024 * 1024 // 30MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Check if file is an image
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed'));
+    }
   }
 });
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)){
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // MongoDB Connection
 mongoose.connect('mongodb://localhost:27017/WallDesign', {
@@ -58,18 +62,53 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Image upload endpoint
-app.post('/upload', upload.single('image'), (req, res) => {
+app.post('/upload', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    // Create hash from file content
+    const fileBuffer = req.file.buffer;
+    const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const ext = path.extname(req.file.originalname);
+    const filename = `${hash}${ext}`;
+    const fullPath = path.join(uploadsDir, filename);
+
+    // Check if file already exists
+    if (fs.existsSync(fullPath)) {
+      // File already exists, return existing URL
+      const fileUrl = `http://localhost:${PORT}/uploads/${filename}`;
+      console.log('Duplicate image detected, returning existing URL:', fileUrl);
+      return res.json({ 
+        url: fileUrl,
+        message: 'Image already exists'
+      });
+    }
+
+    // Save new file
+    fs.writeFileSync(fullPath, fileBuffer);
+    const fileUrl = `http://localhost:${PORT}/uploads/${filename}`;
+    console.log('New image uploaded:', fileUrl);
     
-    // Return the URL for the uploaded file
-    const fileUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl });
+    res.json({ 
+      url: fileUrl,
+      message: 'Image uploaded successfully'
+    });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          error: 'File size too large',
+          limit: '30MB'
+        });
+      }
+    }
+    res.status(500).json({ 
+      error: 'Upload failed',
+      details: error.message 
+    });
   }
 });
 
@@ -133,8 +172,7 @@ app.post('/login', async (req, res) => {
 app.get('/user/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('-password') // Exclude password from the response
-      .populate('wallDesigns');
+      .select('-password'); // Exclude password from the response
       
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -143,99 +181,11 @@ app.get('/user/:id', async (req, res) => {
     res.json({
       id: user._id,
       name: user.name,
-      email: user.email,
-      wallDesigns: user.wallDesigns
+      email: user.email
     });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
-// Create wall design
-app.post('/wall-designs', async (req, res) => {
-  try {
-    const { userId, name, wallSize, backgroundColor, images } = req.body;
-    
-    const wallDesign = new WallDesign({
-      userId,
-      name,
-      wallSize,
-      backgroundColor,
-      images
-    });
-    
-    await wallDesign.save();
-
-    // Add the design to user's wallDesigns array
-    await User.findByIdAndUpdate(userId, {
-      $push: { wallDesigns: wallDesign._id }
-    });
-
-    res.status(201).json({
-      message: 'Wall design created successfully',
-      wallDesign
-    });
-  } catch (error) {
-    console.error('Create wall design error:', error);
-    res.status(500).json({ error: 'Failed to create wall design' });
-  }
-});
-
-// Get user's wall designs
-app.get('/wall-designs/:userId', async (req, res) => {
-  try {
-    const wallDesigns = await WallDesign.find({ userId: req.params.userId })
-      .sort({ lastModified: -1 });
-    res.json(wallDesigns);
-  } catch (error) {
-    console.error('Get wall designs error:', error);
-    res.status(500).json({ error: 'Failed to fetch wall designs' });
-  }
-});
-
-// Update wall design
-app.put('/wall-designs/:id', async (req, res) => {
-  try {
-    const wallDesign = await WallDesign.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
-    
-    if (!wallDesign) {
-      return res.status(404).json({ error: 'Wall design not found' });
-    }
-    
-    res.json({
-      message: 'Wall design updated successfully',
-      wallDesign
-    });
-  } catch (error) {
-    console.error('Update wall design error:', error);
-    res.status(500).json({ error: 'Failed to update wall design' });
-  }
-});
-
-// Delete wall design
-app.delete('/wall-designs/:id', async (req, res) => {
-  try {
-    const wallDesign = await WallDesign.findById(req.params.id);
-    if (!wallDesign) {
-      return res.status(404).json({ error: 'Wall design not found' });
-    }
-
-    // Remove the design from user's wallDesigns array
-    await User.findByIdAndUpdate(wallDesign.userId, {
-      $pull: { wallDesigns: wallDesign._id }
-    });
-
-    await WallDesign.findByIdAndDelete(req.params.id);
-    
-    res.json({ message: 'Wall design deleted successfully' });
-  } catch (error) {
-    console.error('Delete wall design error:', error);
-    res.status(500).json({ error: 'Failed to delete wall design' });
   }
 });
 

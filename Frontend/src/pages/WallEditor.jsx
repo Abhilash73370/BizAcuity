@@ -23,28 +23,6 @@ const TABS = [
   { key: 'decors', label: 'Decors' },
 ];
 
-// Helper function to convert file to base64
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-// Helper function to convert URL to base64
-const urlToBase64 = async (url) => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return await fileToBase64(blob);
-  } catch (error) {
-    console.error('Error converting URL to base64:', error);
-    return null;
-  }
-};
-
 function WallEditor() {
   const [wallImage, setWallImage] = useState(null);
   const [images, setImages] = useState([]);
@@ -340,32 +318,6 @@ function WallEditor() {
     }
     setWallWidth(width);
     setWallHeight(height);
-  };
-
-  const handleExport = () => {
-    // Create an object with all the wall design data
-    const designData = {
-      wallColor,
-      wallWidth,
-      wallHeight,
-      wallImage,
-      images,
-      imageStates
-    };
-
-    // Convert to JSON and create blob
-    const jsonData = JSON.stringify(designData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    
-    // Create download link and trigger download
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'wall-design.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   // Load existing draft if draftId is present

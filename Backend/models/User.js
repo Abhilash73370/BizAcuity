@@ -22,11 +22,7 @@ const userSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    },
-    wallDesigns: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'WallDesign'
-    }]
+    }
 });
 
 const User = mongoose.model('User', userSchema);
