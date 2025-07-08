@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
+const fs = require('fs');
 
 // Import models
 const User = require('./models/User');
@@ -14,23 +15,27 @@ const app = express();
 const PORT = 5001;
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename using timestamp and random string
-    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
   limits: {
     fileSize: 30 * 1024 * 1024 // 30MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Check if file is an image
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed'));
+    }
   }
 });
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)){
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // MongoDB Connection
 mongoose.connect('mongodb://localhost:27017/WallDesign', {
@@ -57,18 +62,53 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Image upload endpoint
-app.post('/upload', upload.single('image'), (req, res) => {
+app.post('/upload', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    // Create hash from file content
+    const fileBuffer = req.file.buffer;
+    const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const ext = path.extname(req.file.originalname);
+    const filename = `${hash}${ext}`;
+    const fullPath = path.join(uploadsDir, filename);
+
+    // Check if file already exists
+    if (fs.existsSync(fullPath)) {
+      // File already exists, return existing URL
+      const fileUrl = `http://localhost:${PORT}/uploads/${filename}`;
+      console.log('Duplicate image detected, returning existing URL:', fileUrl);
+      return res.json({ 
+        url: fileUrl,
+        message: 'Image already exists'
+      });
+    }
+
+    // Save new file
+    fs.writeFileSync(fullPath, fileBuffer);
+    const fileUrl = `http://localhost:${PORT}/uploads/${filename}`;
+    console.log('New image uploaded:', fileUrl);
     
-    // Return the URL for the uploaded file
-    const fileUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl });
+    res.json({ 
+      url: fileUrl,
+      message: 'Image uploaded successfully'
+    });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          error: 'File size too large',
+          limit: '30MB'
+        });
+      }
+    }
+    res.status(500).json({ 
+      error: 'Upload failed',
+      details: error.message 
+    });
   }
 });
 
