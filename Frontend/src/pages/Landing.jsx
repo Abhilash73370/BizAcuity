@@ -163,7 +163,7 @@ const Landing = () => {
                       {draft.name}
                     </h3>
                     <p className="text-sm text-gray-600 mb-4">
-                      Last edited: {formatDate(draft.lastModified)}
+                      Last edited: {formatDate(draft.updatedAt)}
                     </p>
                     <button
                       onClick={() => handleOpenDraft(draft._id)}
