@@ -361,4 +361,75 @@ app.put('/user/update-password/:id', async (req, res) => {
   }
 });
 
+// Search users endpoint
+app.get('/users/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .select('_id name email')
+    .limit(10);
+
+    res.json(users);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+// Share draft endpoint
+app.post('/drafts/:draftId/share', async (req, res) => {
+  try {
+    const { draftId } = req.params;
+    const { userIds } = req.body;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'User IDs array is required' });
+    }
+
+    const draft = await Draft.findById(draftId);
+    if (!draft) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+
+    // Add new users to sharedWith array (avoid duplicates)
+    const existingUserIds = draft.sharedWith.map(share => share.userId.toString());
+    const newUserIds = userIds.filter(id => !existingUserIds.includes(id));
+
+    draft.sharedWith.push(...newUserIds.map(userId => ({ userId })));
+    await draft.save();
+
+    res.json({ message: 'Draft shared successfully', draft });
+  } catch (error) {
+    console.error('Share draft error:', error);
+    res.status(500).json({ error: 'Failed to share draft' });
+  }
+});
+
+// Get shared drafts endpoint
+app.get('/drafts/shared/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const sharedDrafts = await Draft.find({
+      'sharedWith.userId': userId
+    })
+    .populate('userId', 'name email')
+    .sort({ 'sharedWith.sharedAt': -1 });
+
+    res.json(sharedDrafts);
+  } catch (error) {
+    console.error('Get shared drafts error:', error);
+    res.status(500).json({ error: 'Failed to fetch shared drafts' });
+  }
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

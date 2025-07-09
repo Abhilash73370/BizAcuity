@@ -12,6 +12,16 @@ const draftSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  sharedWith: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    sharedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   wallData: {
     type: Object,
     required: true,
@@ -37,6 +47,10 @@ const draftSchema = new mongoose.Schema({
       message: 'Preview image exceeds maximum allowed size of 2MB'
     }
   },
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
   createdAt: {
     type: Date,
     default: Date.now
