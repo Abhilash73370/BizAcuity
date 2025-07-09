@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import html2canvas from 'html2canvas';
 import DraggableImage from '../components/DraggableImage';
 import ImagePropertiesPanel from '../components/ImagePropertiesPanel';
 import WallSizePanel from '../components/Sidebar/WallSizePanel';
@@ -8,9 +9,8 @@ import ExportButton from '../components/ExportButton';
 import Header from '../components/Header';
 import { UserContext } from '../App';
 import { useNavigate, useLocation } from 'react-router-dom';
-import FrameSelector from '../components/FrameSelector';
-import ShapeSelector from '../components/ShapeSelector';
-import html2canvas from 'html2canvas';
+import SaveDraftModal from '../components/SaveDraftModal';
+import ShareModal from '../components/ShareModal';
 import DecorsPanel from '../components/Sidebar/DecorsPanel';
 
 const MIN_SIZE = 200;
@@ -36,8 +36,10 @@ function WallEditor() {
   const [activeTab, setActiveTab] = useState('editor');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isSharedView, setIsSharedView] = useState(false);
+  const [isCollaborating, setIsCollaborating] = useState(false);
 
   const wallImageInputRef = useRef(null);
   const imagesInputRef = useRef(null);
@@ -321,6 +323,15 @@ function WallEditor() {
   };
 
   // Load existing draft if draftId is present
+      // Check if this is a shared view
+      useEffect(() => {
+    const sharedParam = searchParams.get('shared');
+    const collaborateParam = searchParams.get('collaborate');
+    setIsSharedView(sharedParam === 'true');
+    setIsCollaborating(collaborateParam === 'true');
+      }, [searchParams]);
+
+  // Load draft data and set up real-time updates
   useEffect(() => {
     const loadDraft = async () => {
       if (!draftId) return;
@@ -336,25 +347,36 @@ function WallEditor() {
         // Load wall data
         const { wallData } = draft;
         if (wallData) {
-          // Set wall color and dimensions
           setWallColor(wallData.wallColor || '#FFFFFF');
           setWallWidth(wallData.wallWidth || 800);
           setWallHeight(wallData.wallHeight || 600);
+          setWallImage(wallData.wallImage);
+          setImages(wallData.images || []);
+          setImageStates(wallData.imageStates || []);
+        }
+
+        // Set up real-time updates if collaborating
+        if (isCollaborating) {
+          // Set up WebSocket connection for real-time updates
+          const ws = new WebSocket(`ws://localhost:5001/drafts/${draftId}/collaborate`);
           
-          // Set wall background image if it exists
-          if (wallData.wallImage) {
-            setWallImage(wallData.wallImage);
-          }
-          
-          // Set uploaded images if they exist
-          if (wallData.images && Array.isArray(wallData.images)) {
-            setImages(wallData.images);
-          }
-          
-          // Set image states if they exist
-          if (wallData.imageStates && Array.isArray(wallData.imageStates)) {
-            setImageStates(wallData.imageStates);
-          }
+          ws.onmessage = (event) => {
+            const update = JSON.parse(event.data);
+            
+            // Apply updates from other users
+            if (update.type === 'wall_update') {
+              const { wallData } = update;
+              setWallColor(wallData.wallColor);
+              setWallWidth(wallData.wallWidth);
+              setWallHeight(wallData.wallHeight);
+              setWallImage(wallData.wallImage);
+              setImages(wallData.images);
+              setImageStates(wallData.imageStates);
+            }
+          };
+
+          // Clean up WebSocket on unmount
+          return () => ws.close();
         }
       } catch (error) {
         console.error('Load draft error:', error);
@@ -365,7 +387,29 @@ function WallEditor() {
     };
 
     loadDraft();
-  }, [draftId]);
+  }, [draftId, isCollaborating]);
+
+  // Send updates to server when wall data changes in collaboration mode
+  useEffect(() => {
+    if (isCollaborating && draftId) {
+      const wallData = {
+        wallColor,
+        wallWidth,
+        wallHeight,
+        wallImage,
+        images,
+        imageStates
+      };
+
+      fetch(`http://localhost:5001/drafts/${draftId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallData }),
+      }).catch(error => {
+        console.error('Error updating shared wall:', error);
+      });
+    }
+  }, [wallColor, wallWidth, wallHeight, wallImage, images, imageStates, isCollaborating, draftId]);
 
   const captureWallPreview = async () => {
     if (!wallRef.current) return null;
@@ -415,81 +459,6 @@ function WallEditor() {
     }
   };
 
-  const handleSaveDraft = async () => {
-    if (!draftName.trim()) {
-      setSaveError('Please enter a name for your draft');
-      return;
-    }
-
-    if (!registeredUser?.isLoggedIn) {
-      setSaveError('Please log in to save drafts');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setSaveError('');
-
-      // Capture wall preview
-      const previewImage = await captureWallPreview();
-      if (!previewImage) {
-        throw new Error('Failed to capture wall preview');
-      }
-
-      // Prepare wall data - no need to optimize images as they're now URLs
-      const wallData = {
-        wallColor,
-        wallWidth,
-        wallHeight,
-        wallImage,
-        images,
-        imageStates
-      };
-
-      const url = draftId 
-        ? `http://localhost:5001/drafts/${draftId}`
-        : 'http://localhost:5001/drafts';
-      
-      const method = draftId ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: draftName,
-          userId: registeredUser.id,
-          wallData,
-          previewImage
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save draft');
-      }
-
-      const result = await response.json();
-      
-      setShowSaveModal(false);
-      
-      // If this was a new draft, update the URL with the new draft ID
-      if (!draftId && result.draft._id) {
-        window.history.replaceState(null, '', `/wall?draftId=${result.draft._id}`);
-      }
-      
-      // Show success message and navigate
-      alert('Design saved successfully!');
-      navigate('/landing');
-    } catch (error) {
-      console.error('Save draft error:', error);
-      setSaveError(error.message || 'Failed to save draft. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Function to add decor to the wall
   const handleAddDecor = async (decorImage) => {
     try {
@@ -517,6 +486,18 @@ function WallEditor() {
     } catch (error) {
       console.error('Error adding decor:', error);
       alert('Failed to add decor item. Please try again.');
+    }
+  };
+
+  // Function to handle wall sharing
+  const handleShareWall = async () => {
+    try {
+      setShowShareModal(true);
+      // The ShareModal component will handle its own state and URL updates
+    } catch (error) {
+      console.error('Error sharing wall:', error);
+      alert('Failed to create shareable link. Please try again.');
+      setShowShareModal(false);
     }
   };
 
@@ -578,9 +559,16 @@ function WallEditor() {
         <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[320px_1fr] min-h-screen bg-secondary"
              style={{gridTemplateAreas: '"header header" "sidebar main" "footer footer"'}}>
           
-          {/* Header with export button */}
+          {/* Header with buttons */}
           <div className="flex justify-between items-center px-8 py-4 bg-surface shadow-md" style={{ gridArea: 'header' }}>
-            <h1 className="text-2xl font-bold text-primary-dark">Wall Designer</h1>
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-primary-dark">Wall Designer</h1>
+              {isSharedView && (
+                <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                  {isCollaborating ? 'Collaborative Mode' : 'Shared View'}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowSaveModal(true)}
@@ -590,6 +578,15 @@ function WallEditor() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h-2v5.586l-1.293-1.293z" />
                   <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="bg-primary-dark text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary transition flex items-center gap-2"
+              >
+                <span>Share</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                 </svg>
               </button>
               <ExportButton wallRef={wallRef} />
@@ -665,41 +662,45 @@ function WallEditor() {
           </footer>
         </div>
 
-        {/* Save Draft Modal */}
-        {showSaveModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 1000 }}>
-            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 transform transition-all">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-                {draftId ? 'Update Design' : 'Save Design'}
-              </h2>
-              <input
-                type="text"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="Enter a name for your design"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              {saveError && (
-                <p className="text-red-600 mb-4">{saveError}</p>
-              )}
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setShowSaveModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition duration-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={loading}
-                  className="bg-primary-dark text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Saving...' : draftId ? 'Update' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modals */}
+        <SaveDraftModal
+          showModal={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          wallRef={wallRef}
+          draftId={draftId}
+          registeredUser={registeredUser}
+          wallData={{
+            wallColor,
+            wallWidth,
+            wallHeight,
+            wallImage,
+            images,
+            imageStates
+          }}
+          initialDraftName={draftName}
+        />
+
+        <ShareModal
+          showModal={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          wallRef={wallRef}
+          draftId={draftId}
+          registeredUser={registeredUser}
+          wallData={{
+            wallColor,
+            wallWidth,
+            wallHeight,
+            wallImage,
+            images,
+            imageStates
+          }}
+          onDraftCreated={(newDraftId) => {
+            // Update URL with new draft ID if one was created
+            if (newDraftId && !draftId) {
+              window.history.replaceState(null, '', `/wall?draftId=${newDraftId}&shared=true&collaborate=true`);
+            }
+          }}
+        />
       </main>
     </div>
   );

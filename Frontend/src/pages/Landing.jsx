@@ -6,8 +6,11 @@ import { UserContext } from '../App';
 const Landing = () => {
   const navigate = useNavigate();
   const [drafts, setDrafts] = useState([]);
+  const [sharedDrafts, setSharedDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sharedLoading, setSharedLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sharedError, setSharedError] = useState(null);
   const { registeredUser } = useContext(UserContext);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState(null);
@@ -34,7 +37,23 @@ const Landing = () => {
       }
     };
 
+    const fetchSharedDrafts = async () => {
+      try {
+        setSharedLoading(true);
+        const response = await fetch(`http://localhost:5001/drafts/shared/${registeredUser.id}`);
+        if (!response.ok) throw new Error('Failed to fetch shared drafts');
+        const data = await response.json();
+        setSharedDrafts(data);
+      } catch (err) {
+        console.error('Fetch shared drafts error:', err);
+        setSharedError(err.message);
+      } finally {
+        setSharedLoading(false);
+      }
+    };
+
     fetchDrafts();
+    fetchSharedDrafts();
   }, [registeredUser, navigate]);
 
   const formatDate = (dateString) => {
@@ -106,7 +125,7 @@ const Landing = () => {
         </div>
 
         {/* Drafts Section */}
-        <div className="mb-6">
+        <div className="mb-12">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-gray-800">Your Saved Designs</h2>
             <span className="text-gray-600">
@@ -162,6 +181,63 @@ const Landing = () => {
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">
                       {draft.name}
                     </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Last edited: {formatDate(draft.updatedAt)}
+                    </p>
+                    <button
+                      onClick={() => handleOpenDraft(draft._id)}
+                      className="w-full bg-primary text-secondary px-4 py-2 rounded-lg text-base font-semibold shadow-md hover:bg-primary-dark transition"
+                    >
+                      Open Design
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Shared Walls Section */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-gray-800">Shared With You</h2>
+            <span className="text-gray-600">
+              {sharedDrafts.length} {sharedDrafts.length === 1 ? 'Design' : 'Designs'}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {sharedLoading ? (
+              <div className="col-span-full text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              </div>
+            ) : sharedError ? (
+              <div className="col-span-full text-center py-8 text-red-600">
+                {sharedError}
+              </div>
+            ) : sharedDrafts.length === 0 ? (
+              <div className="col-span-full bg-white rounded-lg p-8 text-center">
+                <div className="mb-4">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No shared designs yet</h3>
+                <p className="text-gray-600">Designs shared with you will appear here</p>
+              </div>
+            ) : (
+              sharedDrafts.map((draft) => (
+                <div
+                  key={draft._id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 relative group p-4"
+                >
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      {draft.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Shared by: {draft.userId.name}
+                    </p>
                     <p className="text-sm text-gray-600 mb-4">
                       Last edited: {formatDate(draft.updatedAt)}
                     </p>
