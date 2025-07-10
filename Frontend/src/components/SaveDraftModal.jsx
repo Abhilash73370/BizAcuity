@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
+import { authFetch } from '../utils/auth';
 
 const SaveDraftModal = ({ 
   showModal, 
@@ -47,7 +48,7 @@ const SaveDraftModal = ({
       const formData = new FormData();
       formData.append('image', blob, 'preview.jpg');
       
-      const response = await fetch('http://localhost:5001/upload', {
+      const response = await authFetch('http://localhost:5001/upload', {
         method: 'POST',
         body: formData,
       });
@@ -91,14 +92,13 @@ const SaveDraftModal = ({
       
       const method = draftId ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: draftName,
-          userId: registeredUser.id,
           wallData,
           previewImage
         }),

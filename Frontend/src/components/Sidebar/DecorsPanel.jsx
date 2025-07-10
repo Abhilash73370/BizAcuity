@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Flower2 } from 'lucide-react';
+import { authFetch } from '../../utils/auth';
 
 const decorCategories = {
   clocks: {
@@ -99,7 +100,7 @@ const DecorsPanel = ({ onAddDecor }) => {
       const formData = new FormData();
       formData.append('image', blob, `decor-${decor.id}${decor.src.substring(decor.src.lastIndexOf('.'))}`);
       
-      const uploadResponse = await fetch('http://localhost:5001/upload', {
+      const uploadResponse = await authFetch('http://localhost:5001/upload', {
         method: 'POST',
         body: formData,
       });

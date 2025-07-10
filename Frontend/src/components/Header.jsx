@@ -1,16 +1,17 @@
 import React, { useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserContext } from '../App';
+import { isAuthenticated } from '../utils/auth';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { registeredUser, setRegisteredUser } = useContext(UserContext);
-  const isLoggedIn = Boolean(registeredUser && registeredUser.isLoggedIn);
+  const { registeredUser, handleLogout } = useContext(UserContext);
+  const isLoggedIn = isAuthenticated();
 
-  const handleLogout = () => {
-    setRegisteredUser({ ...registeredUser, isLoggedIn: false });
-    navigate('/');
+  const onLogout = () => {
+    handleLogout();
+    navigate('/login');
   };
 
   return (
@@ -24,7 +25,7 @@ const Header = () => {
         {isLoggedIn ? (
           <>
             <Link to="/user" className={`hover:underline ${location.pathname === '/user' ? 'underline' : ''}`}>User</Link>
-            <button onClick={handleLogout} className="hover:underline">Logout</button>
+            <button onClick={onLogout} className="hover:underline">Logout</button>
           </>
         ) : (
           <>

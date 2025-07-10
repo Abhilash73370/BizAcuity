@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../utils/auth';
 
 const ShareModal = ({ 
   showModal, 
@@ -35,7 +36,7 @@ const ShareModal = ({
   const searchUsers = async (query) => {
     try {
       setIsSearching(true);
-      const response = await fetch(`http://localhost:5001/users/search?query=${encodeURIComponent(query)}`);
+      const response = await authFetch(`http://localhost:5001/users/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) throw new Error('Failed to search users');
       const users = await response.json();
       // Filter out the current user and already selected users
@@ -69,12 +70,11 @@ const ShareModal = ({
 
       if (!draftId) {
         // Create a new draft for sharing
-        const response = await fetch('http://localhost:5001/drafts', {
+        const response = await authFetch('http://localhost:5001/drafts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: `Shared Wall ${new Date().toLocaleDateString()}`,
-            userId: registeredUser?.id,
             wallData: wallData,
             previewImage: null
           }),
@@ -90,7 +90,7 @@ const ShareModal = ({
       }
 
       // Share with selected users
-      const shareResponse = await fetch(`http://localhost:5001/drafts/${finalDraftId}/share`, {
+      const shareResponse = await authFetch(`http://localhost:5001/drafts/${finalDraftId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -119,12 +119,11 @@ const ShareModal = ({
 
       if (!draftId) {
         // Create a new draft for sharing
-        const response = await fetch('http://localhost:5001/drafts', {
+        const response = await authFetch('http://localhost:5001/drafts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: `Shared Wall ${new Date().toLocaleDateString()}`,
-            userId: registeredUser?.id,
             wallData: wallData,
             isPublic: true,
             previewImage: null

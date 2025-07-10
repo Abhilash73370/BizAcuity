@@ -12,6 +12,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import SaveDraftModal from '../components/SaveDraftModal';
 import ShareModal from '../components/ShareModal';
 import DecorsPanel from '../components/Sidebar/DecorsPanel';
+import { authFetch } from '../utils/auth';
 
 const MIN_SIZE = 200;
 const MAX_SIZE = 2000;
@@ -53,7 +54,7 @@ function WallEditor() {
 
   useEffect(() => {
     if (registeredUser && registeredUser.isLoggedIn) {
-      fetch(`http://localhost:5001/wall/${registeredUser.id}`)
+      authFetch(`http://localhost:5001/wall/${registeredUser.id}`)
         .then(res => res.json())
         .then(data => {
           if (data.wall) {
@@ -71,10 +72,10 @@ function WallEditor() {
   useEffect(() => {
     if (registeredUser && registeredUser.isLoggedIn) {
       const wall = { wallColor, wallWidth, wallHeight, wallImage, images, imageStates };
-      fetch('http://localhost:5001/wall', {
+      authFetch('http://localhost:5001/wall', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: registeredUser.id, wall }),
+        body: JSON.stringify({ wall }),
       });
     }
   }, [wallColor, wallWidth, wallHeight, wallImage, images, imageStates, registeredUser]);
@@ -200,7 +201,7 @@ function WallEditor() {
         const formData = new FormData();
         formData.append('image', file);
 
-        const response = await fetch('http://localhost:5001/upload', {
+        const response = await authFetch('http://localhost:5001/upload', {
           method: 'POST',
           body: formData,
         });
@@ -225,7 +226,7 @@ function WallEditor() {
         const formData = new FormData();
         formData.append('image', file);
 
-        const response = await fetch('http://localhost:5001/upload', {
+        const response = await authFetch('http://localhost:5001/upload', {
           method: 'POST',
           body: formData,
         });
@@ -338,7 +339,7 @@ function WallEditor() {
 
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5001/drafts/single/${draftId}`);
+        const response = await authFetch(`http://localhost:5001/drafts/single/${draftId}`);
         if (!response.ok) throw new Error('Failed to load draft');
         
         const draft = await response.json();
@@ -401,7 +402,7 @@ function WallEditor() {
         imageStates
       };
 
-      fetch(`http://localhost:5001/drafts/${draftId}/update`, {
+      authFetch(`http://localhost:5001/drafts/${draftId}/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallData }),
@@ -442,7 +443,7 @@ function WallEditor() {
       const formData = new FormData();
       formData.append('image', blob, 'preview.jpg');
       
-      const response = await fetch('http://localhost:5001/upload', {
+      const response = await authFetch('http://localhost:5001/upload', {
         method: 'POST',
         body: formData,
       });
