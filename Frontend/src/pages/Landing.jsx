@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { UserContext } from '../App';
+import { authFetch } from '../utils/auth';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const Landing = () => {
     const fetchDrafts = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5001/drafts/${registeredUser.id}`);
+        const response = await authFetch(`http://localhost:5001/drafts/${registeredUser.id}`);
         if (!response.ok) throw new Error('Failed to fetch drafts');
         const data = await response.json();
         setDrafts(data);
@@ -40,7 +41,7 @@ const Landing = () => {
     const fetchSharedDrafts = async () => {
       try {
         setSharedLoading(true);
-        const response = await fetch(`http://localhost:5001/drafts/shared/${registeredUser.id}`);
+        const response = await authFetch(`http://localhost:5001/drafts/shared/${registeredUser.id}`);
         if (!response.ok) throw new Error('Failed to fetch shared drafts');
         const data = await response.json();
         setSharedDrafts(data);
@@ -84,7 +85,7 @@ const Landing = () => {
     if (!draftToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/drafts/${draftToDelete._id}`, {
+      const response = await authFetch(`http://localhost:5001/drafts/${draftToDelete._id}`, {
         method: 'DELETE',
       });
 

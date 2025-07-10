@@ -7,9 +7,10 @@ const multer = require('multer');
 const crypto = require('crypto');
 const fs = require('fs');
 
-// Import models
+// Import models and middleware
 const User = require('./models/User');
 const Draft = require('./models/Draft');
+const { generateToken, verifyToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = 5001;
@@ -49,7 +50,7 @@ mongoose.connect('mongodb://localhost:27017/WallDesign', {
 const corsOptions = {
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -61,8 +62,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// Image upload endpoint
-app.post('/upload', upload.single('image'), async (req, res) => {
+// Image upload endpoint - Protected
+app.post('/upload', verifyToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -123,13 +124,17 @@ app.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Create new user with plain text password
+    // Create new user (password will be hashed by the model middleware)
     const user = new User({ name, email, password });
     await user.save();
 
+    // Generate JWT token
+    const token = generateToken(user._id);
+
     res.status(201).json({ 
       message: 'Registration successful',
-      user: { id: user._id, name: user.name, email: user.email }
+      user: { id: user._id, name: user.name, email: user.email },
+      token
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -148,19 +153,24 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Direct password comparison
-    if (user.password !== password) {
+    // Compare password using the model method
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Send user data without password
+    // Generate JWT token
+    const token = generateToken(user._id);
+
+    // Send user data and token
     res.json({ 
       message: 'Login successful', 
       user: { 
         id: user._id, 
         name: user.name, 
         email: user.email 
-      } 
+      },
+      token
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -168,11 +178,11 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Get user
-app.get('/user/:id', async (req, res) => {
+// Protected route - Get user
+app.get('/user/:id', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('-password'); // Exclude password from the response
+      .select('-password');
       
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -190,17 +200,16 @@ app.get('/user/:id', async (req, res) => {
 });
 
 // Draft Routes
-// Create new draft
-app.post('/drafts', async (req, res) => {
+// Protected route - Create new draft
+app.post('/drafts', verifyToken, async (req, res) => {
   try {
-    const { name, userId, wallData, previewImage } = req.body;
+    const { name, wallData, previewImage } = req.body;
     
-    if (!name || !userId || !wallData || !previewImage) {
+    if (!name || !wallData || !previewImage) {
       return res.status(400).json({ 
         error: 'Missing required fields',
         details: {
           name: !name,
-          userId: !userId,
           wallData: !wallData,
           previewImage: !previewImage
         }
@@ -209,7 +218,7 @@ app.post('/drafts', async (req, res) => {
 
     const draft = new Draft({
       name,
-      userId,
+      userId: req.userId, // Use the userId from the token
       wallData,
       previewImage
     });
@@ -229,11 +238,18 @@ app.post('/drafts', async (req, res) => {
   }
 });
 
-// Get user's drafts
-app.get('/drafts/:userId', async (req, res) => {
+// Protected route - Get user's drafts
+app.get('/drafts/:userId', verifyToken, async (req, res) => {
   try {
-    const drafts = await Draft.find({ userId: req.params.userId })
-      .sort({ lastModified: -1 });
+    // Ensure user can only access their own drafts
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const drafts = await Draft.find({ userId: req.userId })
+      .sort({ updatedAt: -1 })
+      .select('name userId previewImage createdAt updatedAt');
+    
     res.json(drafts);
   } catch (error) {
     console.error('Get drafts error:', error);
@@ -244,13 +260,25 @@ app.get('/drafts/:userId', async (req, res) => {
   }
 });
 
-// Get specific draft
-app.get('/drafts/single/:draftId', async (req, res) => {
+// Get specific draft - Protected, but allows access to shared drafts
+app.get('/drafts/single/:draftId', verifyToken, async (req, res) => {
   try {
-    const draft = await Draft.findById(req.params.draftId);
+    const draft = await Draft.findById(req.params.draftId)
+      .populate('userId', 'name email');
+      
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
+
+    // Allow access if user owns the draft or if it's shared with them
+    const isOwner = draft.userId._id.toString() === req.userId;
+    const isSharedWithUser = draft.sharedWith && Array.isArray(draft.sharedWith) && 
+      draft.sharedWith.some(share => share.userId && share.userId.toString() === req.userId);
+
+    if (!isOwner && !isSharedWithUser) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     res.json(draft);
   } catch (error) {
     console.error('Get draft error:', error);
@@ -261,8 +289,8 @@ app.get('/drafts/single/:draftId', async (req, res) => {
   }
 });
 
-// Update draft
-app.put('/drafts/:draftId', async (req, res) => {
+// Update draft - Protected
+app.put('/drafts/:draftId', verifyToken, async (req, res) => {
   try {
     const { name, wallData, previewImage } = req.body;
     
@@ -277,22 +305,21 @@ app.put('/drafts/:draftId', async (req, res) => {
       });
     }
 
-    const draft = await Draft.findByIdAndUpdate(
-      req.params.draftId,
-      { 
-        $set: { 
-          name,
-          wallData,
-          previewImage,
-          lastModified: new Date()
-        } 
-      },
-      { new: true }
-    );
-    
+    const draft = await Draft.findById(req.params.draftId);
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
+
+    // Ensure user can only update their own drafts
+    if (draft.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    draft.name = name;
+    draft.wallData = wallData;
+    draft.previewImage = previewImage;
+    draft.lastModified = new Date();
+    await draft.save();
     
     res.json({
       message: 'Draft updated successfully',
@@ -307,13 +334,20 @@ app.put('/drafts/:draftId', async (req, res) => {
   }
 });
 
-// Delete draft
-app.delete('/drafts/:draftId', async (req, res) => {
+// Delete draft - Protected
+app.delete('/drafts/:draftId', verifyToken, async (req, res) => {
   try {
-    const draft = await Draft.findByIdAndDelete(req.params.draftId);
+    const draft = await Draft.findById(req.params.draftId);
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
+
+    // Ensure user can only delete their own drafts
+    if (draft.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    await draft.deleteOne();
     res.json({ message: 'Draft deleted successfully' });
   } catch (error) {
     console.error('Delete draft error:', error);
@@ -324,11 +358,15 @@ app.delete('/drafts/:draftId', async (req, res) => {
   }
 });
 
-// Update password
-app.put('/user/update-password/:id', async (req, res) => {
+// Update password - Protected
+app.put('/user/update-password/:id', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.params.id;
+    
+    // Ensure user can only update their own password
+    if (req.params.id !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
 
     // Input validation
     if (!currentPassword || !newPassword) {
@@ -340,13 +378,14 @@ app.put('/user/update-password/:id', async (req, res) => {
     }
 
     // Find user
-    const user = await User.findById(userId);
+    const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Direct password comparison
-    if (user.password !== currentPassword) {
+    // Compare password using the model method
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
@@ -361,8 +400,8 @@ app.put('/user/update-password/:id', async (req, res) => {
   }
 });
 
-// Search users endpoint
-app.get('/users/search', async (req, res) => {
+// Search users endpoint - Protected
+app.get('/users/search', verifyToken, async (req, res) => {
   try {
     const { query } = req.query;
     if (!query) {
@@ -385,8 +424,8 @@ app.get('/users/search', async (req, res) => {
   }
 });
 
-// Share draft endpoint
-app.post('/drafts/:draftId/share', async (req, res) => {
+// Share draft endpoint - Protected
+app.post('/drafts/:draftId/share', verifyToken, async (req, res) => {
   try {
     const { draftId } = req.params;
     const { userIds } = req.body;
@@ -400,11 +439,26 @@ app.post('/drafts/:draftId/share', async (req, res) => {
       return res.status(404).json({ error: 'Draft not found' });
     }
 
+    // Ensure user can only share their own drafts
+    if (draft.userId.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Initialize sharedWith array if it doesn't exist
+    if (!draft.sharedWith) {
+      draft.sharedWith = [];
+    }
+
     // Add new users to sharedWith array (avoid duplicates)
     const existingUserIds = draft.sharedWith.map(share => share.userId.toString());
     const newUserIds = userIds.filter(id => !existingUserIds.includes(id));
 
-    draft.sharedWith.push(...newUserIds.map(userId => ({ userId })));
+    // Add new shares with proper format
+    draft.sharedWith.push(...newUserIds.map(userId => ({
+      userId: userId,
+      sharedAt: new Date()
+    })));
+
     await draft.save();
 
     res.json({ message: 'Draft shared successfully', draft });
@@ -414,21 +468,65 @@ app.post('/drafts/:draftId/share', async (req, res) => {
   }
 });
 
-// Get shared drafts endpoint
-app.get('/drafts/shared/:userId', async (req, res) => {
+// Get shared drafts endpoint - Protected
+app.get('/drafts/shared/:userId', verifyToken, async (req, res) => {
   try {
-    const { userId } = req.params;
+    // Ensure user can only view their own shared drafts
+    if (req.params.userId !== req.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
     
     const sharedDrafts = await Draft.find({
-      'sharedWith.userId': userId
+      'sharedWith.userId': req.userId
     })
     .populate('userId', 'name email')
-    .sort({ 'sharedWith.sharedAt': -1 });
+    .sort({ 'sharedWith.sharedAt': -1 })
+    .select('name userId previewImage createdAt updatedAt');
 
     res.json(sharedDrafts);
   } catch (error) {
     console.error('Get shared drafts error:', error);
     res.status(500).json({ error: 'Failed to fetch shared drafts' });
+  }
+});
+
+// Protected route - Get user's wall
+app.get('/wall/:userId', verifyToken, async (req, res) => {
+  try {
+    // Ensure user can only access their own wall
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ wall: user.wall || {} });
+  } catch (error) {
+    console.error('Get wall error:', error);
+    res.status(500).json({ error: 'Failed to fetch wall' });
+  }
+});
+
+// Protected route - Update user's wall
+app.post('/wall', verifyToken, async (req, res) => {
+  try {
+    const { wall } = req.body;
+    
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.wall = wall;
+    await user.save();
+
+    res.json({ message: 'Wall updated successfully', wall });
+  } catch (error) {
+    console.error('Update wall error:', error);
+    res.status(500).json({ error: 'Failed to update wall' });
   }
 });
 

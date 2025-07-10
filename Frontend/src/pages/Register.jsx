@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import Header from '../components/Header';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserContext } from '../App';
+import { isAuthenticated } from '../utils/auth';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -14,10 +15,10 @@ const Register = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (registeredUser?.isLoggedIn) {
+    if (isAuthenticated()) {
       navigate('/landing', { replace: true });
     }
-  }, [registeredUser, navigate]);
+  }, [navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -28,7 +29,11 @@ const Register = () => {
       const res = await fetch('http://localhost:5001/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ 
+          name: name.trim(), 
+          email: email.trim(), 
+          password: password.trim() 
+        }),
       });
       
       const data = await res.json();
@@ -37,8 +42,7 @@ const Register = () => {
         throw new Error(data.error || 'Registration failed. Please try again.');
       }
 
-      // Don't automatically log in after registration
-      // Instead, redirect to login page with a success message
+      // Redirect to login page with success message
       navigate('/login', { 
         replace: true,
         state: { message: 'Registration successful! Please log in.' }

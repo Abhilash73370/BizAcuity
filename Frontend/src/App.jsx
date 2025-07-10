@@ -8,6 +8,7 @@ import User from './pages/User'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
 import { Upload, Settings, Palette, Image as LucideImage, Ruler, Trash2, Download, X } from 'lucide-react'
+import { isAuthenticated, getAuthUser, authFetch, removeToken, removeAuthUser } from './utils/auth'
 
 export const UserContext = createContext();
 
@@ -19,29 +20,33 @@ function App() {
   useEffect(() => {
     const initializeUser = async () => {
       setIsLoading(true);
-      // Clear any stored user data to start fresh
-      localStorage.clear();
       try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          
-          // Verify user session with backend
-          const response = await fetch(`http://localhost:5001/user/${userData.id}`);
-          if (response.ok) {
-            const verifiedUser = await response.json();
-            setRegisteredUser({ ...verifiedUser, isLoggedIn: true });
+        if (isAuthenticated()) {
+          const storedUser = getAuthUser();
+          if (storedUser) {
+            // Verify user session with backend using JWT
+            const response = await authFetch(`http://localhost:5001/user/${storedUser.id}`);
+            if (response.ok) {
+              const verifiedUser = await response.json();
+              setRegisteredUser({ ...verifiedUser, isLoggedIn: true });
+            } else {
+              // If verification fails, clear auth data
+              removeToken();
+              removeAuthUser();
+              setRegisteredUser(null);
+            }
           } else {
-            // If verification fails, clear local storage
-            localStorage.removeItem('user');
+            removeToken(); // Remove token if no user data exists
             setRegisteredUser(null);
           }
         } else {
+          removeAuthUser(); // Remove user data if no token exists
           setRegisteredUser(null);
         }
       } catch (error) {
         console.error('Error initializing user:', error);
-        localStorage.removeItem('user');
+        removeToken();
+        removeAuthUser();
         setRegisteredUser(null);
       } finally {
         setIsLoading(false);
@@ -50,6 +55,13 @@ function App() {
 
     initializeUser();
   }, []);
+
+  // Logout function
+  const handleLogout = () => {
+    removeToken();
+    removeAuthUser();
+    setRegisteredUser(null);
+  };
 
   // Loading screen while checking user session
   if (isLoading) {
@@ -67,15 +79,15 @@ function App() {
   }
 
   return (
-    <UserContext.Provider value={{ registeredUser, setRegisteredUser }}>
+    <UserContext.Provider value={{ registeredUser, setRegisteredUser, handleLogout }}>
       <Router>
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={
-            registeredUser?.isLoggedIn ? <Navigate to="/landing" replace /> : <Login />
+            isAuthenticated() ? <Navigate to="/landing" replace /> : <Login />
           } />
           <Route path="/register" element={
-            registeredUser?.isLoggedIn ? <Navigate to="/landing" replace /> : <Register />
+            isAuthenticated() ? <Navigate to="/landing" replace /> : <Register />
           } />
 
           {/* Protected routes */}
@@ -95,10 +107,9 @@ function App() {
             </ProtectedRoute>
           } />
 
-
           {/* Redirect root to login for non-logged-in users, to landing for logged-in users */}
           <Route path="/" element={
-            registeredUser?.isLoggedIn ? <Navigate to="/landing" replace /> : <Navigate to="/login" replace />
+            isAuthenticated() ? <Navigate to="/landing" replace /> : <Navigate to="/login" replace />
           } />
         </Routes>
       </Router>

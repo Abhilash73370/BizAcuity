@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UserContext } from '../App';
 import Header from '../components/Header';
+import { setToken, setAuthUser, isAuthenticated } from '../utils/auth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,10 +16,10 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (registeredUser?.isLoggedIn) {
+    if (isAuthenticated()) {
       navigate('/landing', { replace: true });
     }
-  }, [registeredUser, navigate]);
+  }, [navigate]);
 
   // Show success message from registration if it exists
   useEffect(() => {
@@ -36,7 +37,6 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Send plain text password directly
       const res = await fetch('http://localhost:5001/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,13 +52,14 @@ const Login = () => {
         throw new Error(data.error || 'Login failed. Please try again.');
       }
 
-      // Store user data in localStorage for persistence
+      // Store token and user data
+      setToken(data.token);
       const userData = { 
         ...data.user, 
         isLoggedIn: true 
       };
       
-      localStorage.setItem('user', JSON.stringify(userData));
+      setAuthUser(userData);
       setRegisteredUser(userData);
       navigate('/landing', { replace: true });
     } catch (err) {
