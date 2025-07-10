@@ -6,11 +6,13 @@ const path = require('path');
 const multer = require('multer');
 const crypto = require('crypto');
 const fs = require('fs');
+require('dotenv').config();
 
-// Import models and middleware
+// Import models, routes and middleware
 const User = require('./models/User');
 const Draft = require('./models/Draft');
-const { generateToken, verifyToken } = require('./middleware/auth');
+const { verifyToken } = require('./middleware/auth');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = 5001;
@@ -61,6 +63,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Increase payload size limit for base64 images
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+// Use auth routes
+app.use('/', authRoutes);
 
 // Image upload endpoint - Protected
 app.post('/upload', verifyToken, upload.single('image'), async (req, res) => {

@@ -20,6 +20,20 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Password is required'],
         minlength: [6, 'Password must be at least 6 characters']
     },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    otp: {
+        code: {
+            type: String,
+            default: null
+        },
+        expiresAt: {
+            type: Date,
+            default: null
+        }
+    },
     wall: {
         wallColor: String,
         wallWidth: Number,
@@ -59,6 +73,21 @@ userSchema.pre('save', async function(next) {
 // Method to compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to generate OTP
+userSchema.methods.generateOTP = function() {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    this.otp.code = otp;
+    this.otp.expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+    return otp;
+};
+
+// Method to verify OTP
+userSchema.methods.verifyOTP = function(code) {
+    return this.otp.code === code && 
+           this.otp.expiresAt > new Date() &&
+           !this.isVerified;
 };
 
 const User = mongoose.model('User', userSchema);
